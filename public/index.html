@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<head>
+  <html lang="en">
+  <meta charset="UTF-8">
+  <meta name="viewport", content="width=device-width">
+  <link rel="stylesheet" href="./style.css"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital@1&display=swap" rel="stylesheet">
+  <title>Mock Chat</title>
+</html>
+</head>
+
+<body>
+  <div id="app">
+    <div>
+      <div class="welcome" v-if="!ready">
+        <h4>Enter your username</h4>
+          <form @submit.prevent="addUser">
+            <div class="form-group row">
+              <input type="text" class="choose_username" v-model="username" placeholder="Enter username here">
+              <button class="join">Join Bantr</button>
+            </div>
+          </form>
+      </div>
+      <div v-if="ready" class="grid">
+        <div v-if="ready" class="grid-item" id="header"><img src="chat.png">Bantr</div> <!--MAKE THIS NICER!!-->
+          <div class="grid-item" id="chat_box">
+            <ul id="messages_content" style="list-style: none; align-content: left; bottom: 0">
+              <li class="messages" v-for="message in messages">
+                <span v-if="message.type === 0"><b>{{message.user.username}}:<span v-html=message.message></span></span></b>
+                <span v-else>{{message.user.username}}:<span v-html=message.message></span></span>
+                <br><small>{{message.timestamp}}</small>
+              </li>
+            </ul>
+          </div>  
+        <div class="grid-item" id="user_list">
+          <ul id="user_list_content" style="list-style: none;">
+            <li class="user" v-for="currentuser in currentusers" :style="{color: currentuser.color}">{{currentuser.user.username}}</li>
+          </ul>
+        </div>
+          <div class="grid-item" id="message_box">
+            <form @submit.prevent="send">
+              <div class="grid-item" class="form-group">
+                <input type="text" class="form-control" v-model:value="newMessage" placeholder="Enter message here">
+                <button @submit.prevent="send">Send</button>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.10/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.10/lodash.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</body>
+
+<script>
+  var socket = null;
+  var vue = new Vue({
+    el: '#app',
+
+    data(){
+      return {
+        connections : 0,
+        newMessage : null,
+        messages: [],
+        username: null,
+        color: '#000000',
+        currentusers: [],
+        ready : false,
+      }
+    },
+
+    methods: {
+      //this method sends the message from the client to server
+      send () {
+        this.messages.push({
+          message: this.newMessage,
+          timestamp: this.timestamp,
+          type: 0,
+          user: {username: this.username , color: this.color},
+        });
+
+        socket.emit('message', {
+          message: this.newMessage,
+          user: {username: this.username, color: this.color},
+        });
+        this.newMessage = '';
+      },
+
+      userInCurrentUser(msg) {
+        for (var key in this.currentusers) {
+          if (this.currentusers[key].username === msg.user.username) {
+            return false;
+          }
+        }
+        return true;
+      },
+
+      addUser() {
+        this.ready = true;
+        //NEED TO SANITIZE INPUT HERE
+        socket.emit('joined', this.username)
+      }
+    },
+
+    created() {
+      socket = io();
+
+      socket.on('joined', (user) => {
+        this.currentusers.push(user);
+      });
+
+      //These are messages received from other users
+      socket.on('message', (message) => {
+        if(message.user.username != this.username){
+          this.messages.push({
+            message: message.message,
+            user: message.user,
+            timestamp: message.timestamp,
+            type: 1,
+          });
+        }
+      });
+    
+    },
+  });
+</script>

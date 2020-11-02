@@ -1,0 +1,126 @@
+@import url("https://fonts.googleapis.com/css?family=PT+Sans");
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital@1&display=swap");
+
+body {
+  font-family: "Roboto", sans-serif;
+}
+
+.welcome {
+  max-width: 50%;
+  margin: auto;
+}
+
+.choose_username {
+  margin-bottom: 15px;
+}
+
+.join {
+  align-items: center;
+}
+
+.grid {
+  margin: auto;
+  display: grid;
+  grid-gap: 5px;
+  max-width: 960px;
+  height: 100vh;
+  padding: 10px;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: 1fr 3fr 1fr;
+}
+
+.grid-item {
+  display: flex;
+}
+
+#header {
+  border: #1abc9c;
+  border-radius: 5px;
+  text-align: center;
+  grid-column-start: 1;
+  grid-column-end: 6;
+  background: #1abc9c;
+  text-align: center;
+  padding: 1em;
+  color: white;
+  font-size: 2em;
+  display: fixed;
+}
+
+#chat_box {
+  min-height: calc(80vh - 10px);
+  width: 100%;
+  overflow-y: scroll;
+  position: relative;
+  border-radius: 1px;
+  text-align: left;
+  background-color: gainsboro;
+  grid-column-start: 1;
+  grid-column-end: 5;
+}
+
+.messages {
+  margin-top: 0.5rem;
+  padding: 5px 20px 5px 20px;
+  border: 2px;
+  border-radius: 10px;
+  background-color: #1abc9c;
+  overflow: scroll;
+  bottom: 0;
+  max-height: 300px;
+  width: fit-content;
+}
+
+#user_list {
+  left: 0px;
+  background-color: gainsboro;
+  border-color: #000000;
+  border-radius: 1px;
+}
+
+#user_list_content {
+  left: 0px;
+  position: relative;
+  padding: 5px;
+  color: #000000;
+}
+
+#message_box {
+  background: none;
+  border: none;
+  grid-column-start: 1;
+  grid-column-end: 6;
+}
+
+#message_content {
+  bottom: 0px;
+  left: 0px;
+  position: relative;
+}
+
+form {
+  background: none;
+  padding: 3px;
+  position: relative;
+  bottom: 0;
+  width: 100%;
+}
+
+form input {
+  padding: 10px;
+  width: 80%;
+  height: 100%;
+  margin-right: 0.5%;
+}
+
+button {
+  width: 20%;
+  color: white;
+  size: 1em;
+  border-color: #1abc9c;
+  border-width: 1px;
+  height: inherit;
+  background: #1abc9c;
+  padding-left: 10px;
+  padding-right: none;
+}
