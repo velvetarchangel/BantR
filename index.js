@@ -1,87 +1,165 @@
+//This is the server file
+
 const express = require("express");
 const socket = require("socket.io");
 const app = express();
 const PORT = 3000;
-
-//map for smileys
-const SMILEYS = {
-  ':)': '&#x1F600',
-  ':-)': '&#x1F600',
-  ':(': '&#128577',
-  ':-(': '&#128577',
-  ':o': '&#128558',
-  ':O':'&#128558',
-  ':/': '&#128533',
-  ':-/': '&#128533',
-};
 
 const server = app.listen(PORT, function () {
   console.log(`Listening on port ${PORT}`);
   console.log(`http://localhost:${PORT}`);
 });
 
-//Load static files
-app.use(express.static("public"));
-//Setup socket io
-const io = socket(server);        //init socket
+let currentusers = [];
+let currentmessages = [];
 
-//functions associated with parsing messages
-/**
- * This function changes current date to format MMM DD hh: mm AM/PM
- */
-function convertTimestamp() {
-  let timestamp = new Date();
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var date = MONTHS[timestamp.getMonth()] + ' ' + timestamp.getDate();
-  var time = null;
-  if (timestamp.getHours() > 12) {
-    time = timestamp.getHours() % 12 + ":" + (timestamp.getMinutes()<10?'0':'') + (timestamp.getMinutes()) + ' PM';
-  } else {
-    time = timestamp.getHours()+ ":" + (timestamp.getMinutes()<10?'0':'') + (timestamp.getMinutes()) + ' AM';
-  }
-  const dateTime = date + ' ' + time;
-  return dateTime;
-}
+const SMILEYS = {
+  ':)': '&#x1F600',
+  ':-)': '&#x1F600',
+  ':(': '&#128577',
+  ':-(': '&#128577',
+  ':o': '&#128558',
+  ':O': '&#128558',
+  ':/': '&#128533',
+  ':-/': '&#128533',
+};
 
-/**
- * Handles different emojis
- * 
- * This function will change the emojis to a hex code
- * that is compatible with html tags. To achieve this I have
- * used v-html tags
- */
 function parseMessage(message) {
   let smileys = Object.keys(SMILEYS);
   smileys.forEach(smiley => message = message.replace(smiley, SMILEYS[smiley]));
   return message;
 }
 
+function isValid(username) {
+  for (let i = 0; i < currentusers.length; i++){
+    if (currentusers[i].username == username) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function convertTimestamp(){
+  let timestamp = new Date();
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var date = MONTHS[timestamp.getMonth()] + ' ' + timestamp.getDate();
+  var time = null;
+  if (timestamp.getHours() > 12) {
+    time = timestamp.getHours() % 12 + ":" + (timestamp.getMinutes() < 10 ? '0' : '') + (timestamp.getMinutes()) + ' PM';
+  } else {
+    time = timestamp.getHours() + ":" + (timestamp.getMinutes() < 10 ? '0' : '') + (timestamp.getMinutes()) + ' AM';
+  }
+  const dateTime = date + ', ' + time;
+  return dateTime;
+}
+
+//Load static files
+app.use(express.static("public"));
+const io = socket(server);
+
+
 io.on('connection', (socket) => {
+  //console.log("Someone connected");
   
-  socket.connections = Object.keys(io.sockets.connected).length;
-  
-  //create user id, default color of user will be black
-  socket.user = {
-    username: 'user' + Math.floor(Math.random() * 100),
-    color: '#000000'
-  };
+  // socket.on('disconnect', () => {
+  //   currentusers.delete(socket.id);
+  //   //add code here for when someone disconnects (closes browser)
+  //   //do all things in the leave CODE HERE
+  //   socket.broadcast.emit('update-users', currentusers);
+  // });
 
-  socket.emit('connections', socket.user);
-
-  socket.on('joined', (username) => {
-    //if the user has not picked a us
-    if (username === null) {
-      socket.emit('joined', {'user' : socket.user})
+  socket.on('joined', (data) => {
+    let user = {};
+    //if user provided a username
+    if (data != null) {
+      if (isValid(data)) {
+        user = { username: data, color: '#000000' };
+      } else {
+        user = { username: 'user' + Math.floor(Math.random() * 100), color: '#00000' };
+      }
+      
     } else {
-      console.log(username);
-      socket.emit('joined', {'user' : {username: username, color: '#000000'}})
+      user = { username: 'user' + Math.floor(Math.random() * 100), color: '#00000'}
+    }
+    currentusers.push(user);
+    socket.emit('joined', user);
+  });
+
+  socket.on('leave', (username) => {
+    for (let i = 0; i < currentusers.length; i++) {
+      if (currentusers[i].username == username) {
+        currentusers.splice(i, 1);
+      }
     }
   });
 
-  //this function receives the message from the client
-  // on io.emit --> sends message back to the client
   socket.on('message', msg => {
-    io.emit('message', { 'message': parseMessage(msg.message), 'user': msg.user, 'timestamp': convertTimestamp()});
+    if (msg.message.slice(0, 7) === "/color ") {
+      let newcolor = msg.message.slice(7, 14);
+      for (let i = 0; i < currentusers.length; i++){
+        if (currentusers[i].username == msg.user.username) {
+          currentusers[i].color = newcolor;
+          msg.user.color = newcolor;
+        }
+      }
+      for (let j = 0; j < currentmessages.length; j++) {
+        if (currentmessages[j].user.username === msg.user.username) {
+          currentmessages[j].user.color = newcolor;
+        }
+      }
+      socket.emit('update-color', newcolor);
+        
+    } else if (msg.message.slice(0, 6) === "/name ") {
+      let oldusername = msg.user.username;
+      let newusername = msg.message.slice(6, msg.message.length);
+
+      //validate whether the username is taken if its not taken do this
+      if (isValid(newusername)) {
+        for (let i = 0; i < currentusers.length; i++) {
+          if (currentusers[i].username == oldusername) {
+            currentusers[i].username = newusername;
+            msg.user.username = newusername;
+          }
+        }
+        for (let j = 0; j < currentmessages.length; j++) {
+          if (currentmessages[j].user.username === oldusername) {
+            currentmessages[j].user.username = newusername;
+          }
+        }
+        socket.emit('update-username', newusername);
+      } else {
+        socket.emit('invalid-username');
+      }
+    } else {
+      currentmessages.push({ message: parseMessage(msg.message), user: msg.user, timestamp: convertTimestamp()});
+      socket.emit('message', { message: parseMessage(msg.message), user: msg.user, timestamp: convertTimestamp() });
+    }
   });
 
+  socket.on('change-username', (data) => {
+    let oldname = data.olduser;
+    let newname = data.newuser;
+
+    for (let i = 0; i < currentusers.length; i++) {
+      if (currentusers[i].username == oldname) {
+        currentusers[i].username = newname;
+      }
+    }
+  });
+
+  //events for continuous polling
+  socket.on('get-users', () => {
+    socket.emit('get-users-response', currentusers);
+  });
+
+  socket.on('get-messages', (username) => {
+    for (let j = 0; j < currentmessages.length; j++) {
+      if (currentmessages[j].user.username === username) {
+        currentmessages[j].user.type = 0;
+      } else {
+        currentmessages[j].user.type = 1;
+      }
+    }
+    socket.emit('get-messages-response', currentmessages);
+  });
 });
